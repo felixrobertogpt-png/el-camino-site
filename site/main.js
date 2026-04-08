@@ -1,52 +1,59 @@
-// ===========================================
-// EL CAMINO DE FRUTILLAR — Main JS
-// ===========================================
+/* ===========================================================
+   EL CAMINO DE FRUTILLAR — main.js
+   Navbar scroll, mobile menu, scroll reveal, gallery lightbox
+   =========================================================== */
 
-document.addEventListener('DOMContentLoaded', () => {
+(function () {
+  'use strict';
 
-  // --- Navbar scroll effect ---
+  /* --- Navbar scroll state --- */
   const navbar = document.getElementById('navbar');
-  const hero = document.getElementById('hero');
+  const logoWhite = document.querySelector('.logo-white');
+  const logoDark  = document.querySelector('.logo-dark');
 
-  const handleScroll = () => {
+  function onScroll() {
     if (window.scrollY > 60) {
       navbar.classList.add('scrolled');
     } else {
       navbar.classList.remove('scrolled');
     }
-  };
-  window.addEventListener('scroll', handleScroll, { passive: true });
+    // Hide scroll indicator
+    const indicator = document.getElementById('scroll-indicator');
+    if (indicator) {
+      indicator.style.opacity = window.scrollY > 80 ? '0' : '1';
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
 
-  // --- Mobile menu toggle ---
+  /* --- Mobile menu --- */
   const menuToggle = document.getElementById('menu-toggle');
-  const navLinks = document.getElementById('nav-links');
+  const navLinks   = document.getElementById('nav-links');
 
-  menuToggle.addEventListener('click', () => {
-    navLinks.classList.toggle('active');
-  });
-
-  // Close menu on link click
-  navLinks.querySelectorAll('a').forEach(link => {
-    link.addEventListener('click', () => {
-      navLinks.classList.remove('active');
+  if (menuToggle && navLinks) {
+    menuToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
     });
-  });
-
-  // --- Scroll indicator ---
-  const scrollIndicator = document.getElementById('scroll-indicator');
-  if (scrollIndicator) {
-    scrollIndicator.addEventListener('click', () => {
-      document.getElementById('proyecto').scrollIntoView({ behavior: 'smooth' });
+    // Close on link click
+    navLinks.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => navLinks.classList.remove('open'));
     });
   }
 
-  // --- Reveal on scroll ---
-  const reveals = document.querySelectorAll('.reveal');
-  const observerOptions = {
-    threshold: 0,
-    rootMargin: '0px 0px 0px 0px'
-  };
+  /* --- Smooth scroll for anchor links --- */
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        const offset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 72;
+        const top = target.getBoundingClientRect().top + window.scrollY - offset;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+    });
+  });
 
+  /* --- Scroll Reveal --- */
   const revealObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
@@ -54,87 +61,84 @@ document.addEventListener('DOMContentLoaded', () => {
         revealObserver.unobserve(entry.target);
       }
     });
-  }, observerOptions);
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
 
-  reveals.forEach(el => revealObserver.observe(el));
+  document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
-  // Fallback: ensure all reveals are visible after 2s regardless
-  setTimeout(() => {
-    reveals.forEach(el => el.classList.add('visible'));
-  }, 2000);
-
-  // --- Gallery Lightbox ---
-  const lightbox = document.getElementById('lightbox');
-  const lightboxImg = document.getElementById('lightbox-img');
+  /* --- Gallery Lightbox --- */
+  const lightbox     = document.getElementById('lightbox');
+  const lightboxImg  = document.getElementById('lightbox-img');
   const lightboxClose = document.getElementById('lightbox-close');
-  const galleryItems = document.querySelectorAll('.gallery-item img');
+  const lightboxPrev = document.getElementById('lightbox-prev');
+  const lightboxNext = document.getElementById('lightbox-next');
 
-  galleryItems.forEach(img => {
-    img.addEventListener('click', () => {
-      lightboxImg.src = img.src;
-      lightboxImg.alt = img.alt;
-      lightbox.classList.add('active');
-      document.body.style.overflow = 'hidden';
-    });
-  });
+  const galleryItems = Array.from(document.querySelectorAll('.gallery-item img'));
+  let currentIndex = 0;
 
-  const closeLightbox = () => {
-    lightbox.classList.remove('active');
+  function openLightbox(index) {
+    currentIndex = index;
+    lightboxImg.src = galleryItems[currentIndex].src;
+    lightboxImg.alt = galleryItems[currentIndex].alt;
+    lightbox.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    lightbox.classList.remove('open');
     document.body.style.overflow = '';
-  };
+    lightboxImg.src = '';
+  }
 
-  lightboxClose.addEventListener('click', closeLightbox);
-  lightbox.addEventListener('click', (e) => {
-    if (e.target === lightbox) closeLightbox();
+  function showPrev() {
+    currentIndex = (currentIndex - 1 + galleryItems.length) % galleryItems.length;
+    lightboxImg.src = galleryItems[currentIndex].src;
+    lightboxImg.alt = galleryItems[currentIndex].alt;
+  }
+
+  function showNext() {
+    currentIndex = (currentIndex + 1) % galleryItems.length;
+    lightboxImg.src = galleryItems[currentIndex].src;
+    lightboxImg.alt = galleryItems[currentIndex].alt;
+  }
+
+  galleryItems.forEach((img, i) => {
+    img.parentElement.addEventListener('click', () => openLightbox(i));
   });
+
+  if (lightboxClose)  lightboxClose.addEventListener('click', closeLightbox);
+  if (lightboxPrev)   lightboxPrev.addEventListener('click', showPrev);
+  if (lightboxNext)   lightboxNext.addEventListener('click', showNext);
+
+  if (lightbox) {
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+  }
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeLightbox();
+    if (!lightbox || !lightbox.classList.contains('open')) return;
+    if (e.key === 'Escape')     closeLightbox();
+    if (e.key === 'ArrowLeft')  showPrev();
+    if (e.key === 'ArrowRight') showNext();
   });
 
-  // --- Contact form ---
+  /* --- Contact form submission --- */
   const form = document.getElementById('contact-form');
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData);
-    
-    // Build WhatsApp message
-    let msg = `Hola, me interesa El Camino de Frutillar.\n`;
-    msg += `Nombre: ${data.nombre}\n`;
-    msg += `Email: ${data.email}\n`;
-    if (data.telefono) msg += `Teléfono: ${data.telefono}\n`;
-    if (data.interes) msg += `Interés: ${data.interes}\n`;
-    if (data.mensaje) msg += `Mensaje: ${data.mensaje}\n`;
-
-    const waUrl = `https://wa.me/56912345678?text=${encodeURIComponent(msg)}`;
-    
-    // Show confirmation
-    const btn = form.querySelector('button[type="submit"]');
-    const originalText = btn.textContent;
-    btn.textContent = '¡Enviado! Redirigiendo a WhatsApp...';
-    btn.style.background = '#25D366';
-    btn.disabled = true;
-    
-    setTimeout(() => {
-      window.open(waUrl, '_blank');
-      btn.textContent = originalText;
-      btn.style.background = '';
-      btn.disabled = false;
-      form.reset();
-    }, 1500);
-  });
-
-  // --- Smooth scroll for all anchor links ---
-  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
+  if (form) {
+    form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const target = document.querySelector(this.getAttribute('href'));
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth' });
-      }
+      const btn = form.querySelector('button[type="submit"]');
+      const original = btn.textContent;
+      btn.textContent = '✓ Consulta enviada';
+      btn.disabled = true;
+      btn.style.background = '#4a7c59';
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.disabled = false;
+        btn.style.background = '';
+        form.reset();
+      }, 4000);
     });
-  });
+  }
 
-});
+})();
