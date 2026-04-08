@@ -1,0 +1,10 @@
+# Ignore everything
+/*
+
+# Except the site directory and its contents
+!/site/
+!/.gitignore
+
+# OS files
+.DS_Store
+Thumbs.db
